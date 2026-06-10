@@ -1,170 +1,612 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Karaburun Numarataj CBS Projesi</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #2c3e50; }
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/MarkerCluster.css">
+        <link rel="stylesheet" href="css/MarkerCluster.Default.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="js/leaflet.markercluster.js"></script>
+        <script src="data/numarataj_epgs_0.js"></script>
+        <script src="data/yap_epgs_1.js"></script>
+        <script src="data/yolortahatt_epgs_2.js"></script>
+        <script src="data/mahalle_epgs_3.js"></script>
+        <script src="data/byk_yaplar_500m2_4.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[38.544524916706074,26.56433319634921],[38.55062873775867,26.57856249634984]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/qgis2web/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        function pop_numarataj_epgs_0(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['OBJECTID'] !== null ? autolinker.link(String(feature.properties['OBJECTID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ID'] !== null ? autolinker.link(String(feature.properties['ID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">TIP</th>\
+                        <td>' + (feature.properties['TIP'] !== null ? autolinker.link(String(feature.properties['TIP']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">KAPINO</th>\
+                        <td>' + (feature.properties['KAPINO'] !== null ? autolinker.link(String(feature.properties['KAPINO']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CBSID'] !== null ? autolinker.link(String(feature.properties['CBSID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">YAPIID</th>\
+                        <td>' + (feature.properties['YAPIID'] !== null ? autolinker.link(String(feature.properties['YAPIID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
 
-    header {
-      background: linear-gradient(135deg, #1a3a5c 0%, #2e6da4 100%);
-      color: white;
-      padding: 36px 40px 28px;
-      border-bottom: 4px solid #e67e22;
-    }
-    header .univ { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.85; margin-bottom: 6px; }
-    header h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
-    header h2 { font-size: 14px; font-weight: 400; opacity: 0.9; }
+        function style_numarataj_epgs_0_0() {
+            return {
+                pane: 'pane_numarataj_epgs_0',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(128,17,25,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(0,0,0,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_numarataj_epgs_0');
+        map.getPane('pane_numarataj_epgs_0').style.zIndex = 400;
+        map.getPane('pane_numarataj_epgs_0').style['mix-blend-mode'] = 'normal';
+        var layer_numarataj_epgs_0 = new L.geoJson(json_numarataj_epgs_0, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_numarataj_epgs_0',
+            layerName: 'layer_numarataj_epgs_0',
+            pane: 'pane_numarataj_epgs_0',
+            onEachFeature: pop_numarataj_epgs_0,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_numarataj_epgs_0_0(feature));
+            },
+        });
+        var cluster_numarataj_epgs_0 = new L.MarkerClusterGroup({showCoverageOnHover: false,
+            spiderfyDistanceMultiplier: 2});
+        cluster_numarataj_epgs_0.addLayer(layer_numarataj_epgs_0);
 
-    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+        bounds_group.addLayer(layer_numarataj_epgs_0);
+        cluster_numarataj_epgs_0.addTo(map);
+        function pop_yap_epgs_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['OBJECTID'] !== null ? autolinker.link(String(feature.properties['OBJECTID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ID'] !== null ? autolinker.link(String(feature.properties['ID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['TIP'] !== null ? autolinker.link(String(feature.properties['TIP']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ADINUMARAS'] !== null ? autolinker.link(String(feature.properties['ADINUMARAS']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CBSID'] !== null ? autolinker.link(String(feature.properties['CBSID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">alan_m2</th>\
+                        <td>' + (feature.properties['alan_m2'] !== null ? autolinker.link(String(feature.properties['alan_m2']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
 
-    .about { background: white; border-radius: 10px; padding: 28px 32px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-left: 5px solid #2e6da4; }
-    .about h3 { font-size: 15px; color: #1a3a5c; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
-    .about p { font-size: 14.5px; line-height: 1.8; color: #444; margin-bottom: 12px; }
-    .about p:last-child { margin-bottom: 0; }
+        function style_yap_epgs_1_0() {
+            return {
+                pane: 'pane_yap_epgs_1',
+                opacity: 1,
+                color: 'rgba(0,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'round',
+                lineJoin: 'round',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_yap_epgs_1');
+        map.getPane('pane_yap_epgs_1').style.zIndex = 401;
+        map.getPane('pane_yap_epgs_1').style['mix-blend-mode'] = 'normal';
+        var layer_yap_epgs_1 = new L.geoJson(json_yap_epgs_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_yap_epgs_1',
+            layerName: 'layer_yap_epgs_1',
+            pane: 'pane_yap_epgs_1',
+            onEachFeature: pop_yap_epgs_1,
+            style: style_yap_epgs_1_0,
+        });
+        bounds_group.addLayer(layer_yap_epgs_1);
+        map.addLayer(layer_yap_epgs_1);
+        function pop_yolortahatt_epgs_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['OBJECTID'] !== null ? autolinker.link(String(feature.properties['OBJECTID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ID'] !== null ? autolinker.link(String(feature.properties['ID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">ADINUMARAS</th>\
+                        <td>' + (feature.properties['ADINUMARAS'] !== null ? autolinker.link(String(feature.properties['ADINUMARAS']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['YOLID'] !== null ? autolinker.link(String(feature.properties['YOLID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CBSID'] !== null ? autolinker.link(String(feature.properties['CBSID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">TIP</th>\
+                        <td>' + (feature.properties['TIP'] !== null ? autolinker.link(String(feature.properties['TIP']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
 
-    .cards-title { font-size: 15px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-    .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-top: 4px solid #2e6da4; }
-    .card:nth-child(2) { border-top-color: #27ae60; }
-    .card:nth-child(3) { border-top-color: #e67e22; }
-    .card .icon { font-size: 26px; margin-bottom: 8px; }
-    .card h4 { font-size: 14px; font-weight: 700; color: #1a3a5c; margin-bottom: 6px; }
-    .card p { font-size: 13px; color: #555; line-height: 1.6; }
+        function style_yolortahatt_epgs_2_0() {
+            return {
+                pane: 'pane_yolortahatt_epgs_2',
+                opacity: 1,
+                color: 'rgba(0,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'round',
+                lineJoin: 'round',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_yolortahatt_epgs_2');
+        map.getPane('pane_yolortahatt_epgs_2').style.zIndex = 402;
+        map.getPane('pane_yolortahatt_epgs_2').style['mix-blend-mode'] = 'normal';
+        var layer_yolortahatt_epgs_2 = new L.geoJson(json_yolortahatt_epgs_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_yolortahatt_epgs_2',
+            layerName: 'layer_yolortahatt_epgs_2',
+            pane: 'pane_yolortahatt_epgs_2',
+            onEachFeature: pop_yolortahatt_epgs_2,
+            style: style_yolortahatt_epgs_2_0,
+        });
+        bounds_group.addLayer(layer_yolortahatt_epgs_2);
+        map.addLayer(layer_yolortahatt_epgs_2);
+        function pop_mahalle_epgs_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['OBJECTID'] !== null ? autolinker.link(String(feature.properties['OBJECTID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ID'] !== null ? autolinker.link(String(feature.properties['ID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ADINUMARAS'] !== null ? autolinker.link(String(feature.properties['ADINUMARAS']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CBSID'] !== null ? autolinker.link(String(feature.properties['CBSID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
 
-    .map-section { background: white; border-radius: 10px; padding: 24px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .map-section h3 { font-size: 15px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
-    .map-wrapper { width: 100%; height: 560px; border-radius: 8px; overflow: hidden; border: 1px solid #dde3ea; }
+        function style_mahalle_epgs_3_0() {
+            return {
+                pane: 'pane_mahalle_epgs_3',
+                opacity: 1,
+                color: 'rgba(228,26,28,1.0)',
+                dashArray: '',
+                lineCap: 'round',
+                lineJoin: 'round',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+        }
+        map.createPane('pane_mahalle_epgs_3');
+        map.getPane('pane_mahalle_epgs_3').style.zIndex = 403;
+        map.getPane('pane_mahalle_epgs_3').style['mix-blend-mode'] = 'normal';
+        var layer_mahalle_epgs_3 = new L.geoJson(json_mahalle_epgs_3, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_mahalle_epgs_3',
+            layerName: 'layer_mahalle_epgs_3',
+            pane: 'pane_mahalle_epgs_3',
+            onEachFeature: pop_mahalle_epgs_3,
+            style: style_mahalle_epgs_3_0,
+        });
+        bounds_group.addLayer(layer_mahalle_epgs_3);
+        map.addLayer(layer_mahalle_epgs_3);
+        function pop_byk_yaplar_500m2_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['OBJECTID'] !== null ? autolinker.link(String(feature.properties['OBJECTID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ID'] !== null ? autolinker.link(String(feature.properties['ID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['TIP'] !== null ? autolinker.link(String(feature.properties['TIP']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ADINUMARAS'] !== null ? autolinker.link(String(feature.properties['ADINUMARAS']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CBSID'] !== null ? autolinker.link(String(feature.properties['CBSID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">alan_m2</th>\
+                        <td>' + (feature.properties['alan_m2'] !== null ? autolinker.link(String(feature.properties['alan_m2']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
 
-    .data-section { background: white; border-radius: 10px; padding: 24px 28px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .data-section h3 { font-size: 15px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-    th { background: #1a3a5c; color: white; padding: 10px 14px; text-align: left; font-weight: 600; }
-    td { padding: 9px 14px; border-bottom: 1px solid #e8ecf0; color: #444; }
-    tr:nth-child(even) td { background: #f4f8fc; }
-    tr:last-child td { border-bottom: none; }
-    .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11.5px; font-weight: 600; }
-    .badge-point   { background: #d4eaff; color: #1a5fa3; }
-    .badge-line    { background: #d4f5e2; color: #1a7a45; }
-    .badge-polygon { background: #ffecd0; color: #b05a00; }
+        function style_byk_yaplar_500m2_4_0() {
+            return {
+                pane: 'pane_byk_yaplar_500m2_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(125,139,143,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_byk_yaplar_500m2_4');
+        map.getPane('pane_byk_yaplar_500m2_4').style.zIndex = 404;
+        map.getPane('pane_byk_yaplar_500m2_4').style['mix-blend-mode'] = 'normal';
+        var layer_byk_yaplar_500m2_4 = new L.geoJson(json_byk_yaplar_500m2_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_byk_yaplar_500m2_4',
+            layerName: 'layer_byk_yaplar_500m2_4',
+            pane: 'pane_byk_yaplar_500m2_4',
+            onEachFeature: pop_byk_yaplar_500m2_4,
+            style: style_byk_yaplar_500m2_4_0,
+        });
+        bounds_group.addLayer(layer_byk_yaplar_500m2_4);
+        map.addLayer(layer_byk_yaplar_500m2_4);
+        const url = {"Nominatim OSM": "https://nominatim.openstreetmap.org/search?format=geojson&addressdetails=1&",
+        "France BAN": "https://api-adresse.data.gouv.fr/search/?"}
+        var photonControl = L.control.photon({
+            url: url["Nominatim OSM"],
+            feedbackLabel: '',
+            position: 'topleft',
+            includePosition: true,
+            initial: true,
+            // resultsHandler: myHandler,
+        }).addTo(map);
+        photonControl._container.childNodes[0].style.borderRadius="10px"
+        // Create a variable to store the geoJSON data
+        var x = null;
+        // Create a variable to store the marker
+        var marker = null;
+        // Add an event listener to the Photon control to create a marker from the returned geoJSON data
+        var z = null;
+        photonControl.on('selected', function(e) {
+            console.log(photonControl.search.resultsContainer);
+            if (x != null) {
+                map.removeLayer(obj3.marker);
+                map.removeLayer(x);
+            }
+            obj2.gcd = e.choice;
+            x = L.geoJSON(obj2.gcd).addTo(map);
+            var label = typeof obj2.gcd.properties.label === 'undefined' ? obj2.gcd.properties.display_name : obj2.gcd.properties.label;
+            obj3.marker = L.marker(x.getLayers()[0].getLatLng()).bindPopup(label).addTo(map);
+            map.setView(x.getLayers()[0].getLatLng(), 17);
+            z = typeof e.choice.properties.label === 'undefined'? e.choice.properties.display_name : e.choice.properties.label;
+            console.log(e);
+            e.target.input.value = z;
+        });
+        var search = document.getElementsByClassName("leaflet-photon leaflet-control")[0];
+        search.classList.add("leaflet-control-search")
+        search.style.display = "flex";
+        search.style.backgroundColor="rgba(255,255,255,0.5)" 
 
-    footer { background: #1a3a5c; color: #a8c0d6; text-align: center; padding: 22px 16px; font-size: 13px; }
-    footer strong { color: white; }
+        // Create the new button element
+        var button = document.createElement("div");
+        button.id = "gcd-button-control";
+        button.className = "gcd-gl-btn fa fa-search search-button";
 
-    @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } header h1 { font-size: 20px; } }
-  </style>
-</head>
-<body>
-
-<header>
-  <div class="univ">İzmir Katip Çelebi Üniversitesi — Web CBS Doktora Dersi Dönemi Ödevi</div>
-  <h1>Karaburun İlçesi Numarataj Verilerinin CBS Ortamında Analizi</h1>
-  <h2>Eğlenhoca ve İnecik Mahalleleri — Kapı Numarası, Yol ve Yapı Katmanları Web Harita Projesi</h2>
-</header>
-
-<div class="container">
-
-  <div class="about">
-    <h3>Proje Hakkında</h3>
-    <p>Bu çalışma, İzmir Büyükşehir Belediyesi koordinasyonunda yürütülen adres ve numarataj güncelleme projesinin CBS (Coğrafi Bilgi Sistemi) ayağı kapsamında üretilen saha verilerinin web ortamında görselleştirilmesini konu almaktadır. Numarataj projesi; her yapıya sokak bağlantısına göre benzersiz bir kapı numarası atanmasını, yapıların coğrafi konumlarının YapıCBS sistemine işlenmesini ve sokak-yapı ilişkisinin CBS katmanları üzerinde tutarlı biçimde kurulmasını kapsamaktadır.</p>
-    <p>İzmir iline ait bu numarataj çalışmasının CBS ayağı, Karaburun ilçesi dahil birden fazla ilçeyi kapsayan aktif bir süreç olarak devam etmektedir. Karaburun ilçesine bağlı Eğlenhoca ve İnecik mahalleleri, numarataj güncelleme çalışmalarının yürütüldüğü aktif sahalardan biri olması nedeniyle bu proje için veri kaynağı olarak seçilmiştir.</p>
-    <p>Çalışmada dört katman kullanılmıştır: mahalle sınırları (alan), yol orta hatları (çizgi), yapı ayak izleri (alan) ve numarataj noktaları (nokta). Numarataj noktaları katmanı; saha ekiplerinin GPS destekli cihazlarla kaydettiği kapı konumlarını ve her noktaya ait sokak kodu, kapı numarası ile mahalle bilgilerini içermektedir. Yol orta hatları ise hangi kapı numarasının hangi sokağa bağlı olduğunu tanımlayan referans geometrisi işlevi görmektedir.</p>
-    <p>Tüm katmanlar EPSG:4326 koordinat sistemine dönüştürülmüş; tampon analizi, alan hesaplama ve mekânsal sorgu olmak üzere üç temel CBS analizi gerçekleştirilmiştir. Üretilen harita QGIS2Web eklentisi ile Leaflet tabanlı web haritasına dönüştürülerek GitHub Pages üzerinden yayınlanmıştır.</p>
-  </div>
-
-  <div class="cards-title">Gerçekleştirilen Analizler</div>
-  <div class="cards">
-    <div class="card">
-      <div class="icon">🛣️</div>
-      <h4>Buffer Analizi</h4>
-      <p>Yol orta hatları katmanı etrafında 100 m tampon alanı üretildi. Bu alanlar, sokağa bağlanacak potansiyel kapı numarası noktalarının belirlenmesinde referans olarak kullanılabilir.</p>
-    </div>
-    <div class="card">
-      <div class="icon">📐</div>
-      <h4>Alan Hesaplama</h4>
-      <p>Yapı ayak izleri katmanındaki her objeye m² cinsinden yüzölçümü hesaplanarak <em>alan_m2</em> özniteliği eklendi. Büyük yapılar çok bağımsız bölüm içerebileceğinden numarataj açısından önem taşır.</p>
-    </div>
-    <div class="card">
-      <div class="icon">🔍</div>
-      <h4>Mekânsal Sorgu</h4>
-      <p>Alanı 500 m²'yi aşan yapılar sorgulanarak ayrı katman olarak kaydedildi. Bu yapılar birden fazla kapı numarası atanması gereken potansiyel noktalar olarak değerlendirilebilir.</p>
-    </div>
-  </div>
-
-  <div class="map-section">
-    <h3>🗺️ Etkileşimli Web Haritası</h3>
-    <div class="map-wrapper">
-      <iframe src="qgis2web/index.html" title="Karaburun Numarataj CBS Haritası" allowfullscreen style="width:100%;height:100%;border:none;display:block;"></iframe>
-    </div>
-  </div>
-
-  <div class="data-section">
-    <h3>📂 Kullanılan Veri Setleri</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Katman Adı</th>
-          <th>Geometri Türü</th>
-          <th>Koordinat Sistemi</th>
-          <th>İçerik</th>
-          <th>Format</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>numarataj_epgs</td>
-          <td><span class="badge badge-point">Nokta</span></td>
-          <td>EPSG:4326</td>
-          <td>Kapı numarası noktaları</td>
-          <td>Shapefile</td>
-        </tr>
-        <tr>
-          <td>yolortahattı_epgs</td>
-          <td><span class="badge badge-line">Çizgi</span></td>
-          <td>EPSG:4326</td>
-          <td>Yol orta hatları</td>
-          <td>Shapefile</td>
-        </tr>
-        <tr>
-          <td>yapı_epgs</td>
-          <td><span class="badge badge-polygon">Alan</span></td>
-          <td>EPSG:4326</td>
-          <td>Yapı ayak izleri</td>
-          <td>Shapefile</td>
-        </tr>
-        <tr>
-          <td>mahalle_epgs</td>
-          <td><span class="badge badge-polygon">Alan</span></td>
-          <td>EPSG:4326</td>
-          <td>Mahalle sınırları</td>
-          <td>Shapefile</td>
-        </tr>
-        <tr>
-          <td>yollar_buffer_100m</td>
-          <td><span class="badge badge-polygon">Alan</span></td>
-          <td>EPSG:4326</td>
-          <td>Buffer analiz çıktısı</td>
-          <td>Shapefile</td>
-        </tr>
-        <tr>
-          <td>buyuk_yapilar_500m2</td>
-          <td><span class="badge badge-polygon">Alan</span></td>
-          <td>EPSG:4326</td>
-          <td>Sorgu analiz çıktısı</td>
-          <td>Shapefile</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-</div>
-
-<footer>
-  <strong>İzmir Katip Çelebi Üniversitesi</strong> — Web CBS Doktora Dersi Dönemi Ödevi &nbsp;|&nbsp;
-  Karaburun / Eğlenhoca–İnecik Numarataj CBS Projesi &nbsp;|&nbsp; QGIS · Leaflet · GitHub Pages
-</footer>
-
-</body>
+        // Insert the button at the beginning of the search control
+        search.insertBefore(button, search.firstChild);
+        last = search.lastChild;
+        last.style.display = "none";
+        button.addEventListener("click", function (e) {
+            if (last.style.display === "none") {
+                last.style.display = "block";
+            } else {
+                last.style.display = "none";
+            }
+        });
+        var overlaysTree = [
+            {label: '<img src="legend/byk_yaplar_500m2_4.png" /> büyük_yapılar_500m2', layer: layer_byk_yaplar_500m2_4},
+            {label: '<img src="legend/mahalle_epgs_3.png" /> mahalle_epgs', layer: layer_mahalle_epgs_3},
+            {label: '<img src="legend/yolortahatt_epgs_2.png" /> yolortahattı_epgs', layer: layer_yolortahatt_epgs_2},
+            {label: '<img src="legend/yap_epgs_1.png" /> yapı_epgs', layer: layer_yap_epgs_1},
+            {label: '<img src="legend/numarataj_epgs_0.png" /> numarataj_epgs', layer: cluster_numarataj_epgs_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        var i = 0;
+        layer_numarataj_epgs_0.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['KAPINO'] !== null?String('<div style="color: #f60000; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['KAPINO']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_numarataj_epgs_0'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_yolortahatt_epgs_2.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['ADINUMARAS'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['ADINUMARAS']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_yolortahatt_epgs_2'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_mahalle_epgs_3.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['ADINUMARAS'] !== null?String('<div style="color: #ff0000; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['ADINUMARAS']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_mahalle_epgs_3'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        resetLabels([layer_numarataj_epgs_0,layer_yolortahatt_epgs_2,layer_mahalle_epgs_3]);
+        map.on("zoomend", function(){
+            resetLabels([layer_numarataj_epgs_0,layer_yolortahatt_epgs_2,layer_mahalle_epgs_3]);
+        });
+        map.on("layeradd", function(){
+            resetLabels([layer_numarataj_epgs_0,layer_yolortahatt_epgs_2,layer_mahalle_epgs_3]);
+        });
+        map.on("layerremove", function(){
+            resetLabels([layer_numarataj_epgs_0,layer_yolortahatt_epgs_2,layer_mahalle_epgs_3]);
+        });
+        </script>        
+    </body>
 </html>
