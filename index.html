@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Karaburun Numarataj CBS Projesi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #2c3e50; }
+
+    header {
+      background: linear-gradient(135deg, #1a3a5c 0%, #2e6da4 100%);
+      color: white;
+      padding: 36px 40px 28px;
+      border-bottom: 4px solid #e67e22;
+    }
+    header .univ { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.85; margin-bottom: 6px; }
+    header h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    header h2 { font-size: 14px; font-weight: 400; opacity: 0.9; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    .about { background: white; border-radius: 10px; padding: 28px 32px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-left: 5px solid #2e6da4; }
+    .about h3 { font-size: 15px; color: #1a3a5c; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+    .about p { font-size: 14.5px; line-height: 1.8; color: #444; margin-bottom: 12px; }
+    .about p:last-child { margin-bottom: 0; }
+
+    .cards-title { font-size: 15px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-top: 4px solid #2e6da4; }
+    .card:nth-child(2) { border-top-color: #27ae60; }
+    .card:nth-child(3) { border-top-color: #e67e22; }
+    .card .icon { font-size: 26px; margin-bottom: 8px; }
+    .card h4 { font-size: 14px; font-weight: 700; color: #1a3a5c; margin-bottom: 6px; }
+    .card p { font-size: 13px; color: #555; line-height: 1.6; }
+
+    .map-section { background: white; border-radius: 10px; padding: 24px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .map-section h3 { font-size: 15px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+    .map-wrapper { width: 100%; height: 560px; border-radius: 8px; overflow: hidden; border: 1px solid #dde3ea; position: relative; }
+    .map-wrapper iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    .data-section { background: white; border-radius: 10px; padding: 24px 28px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .data-section h3 { font-size: 15px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th { background: #1a3a5c; color: white; padding: 10px 14px; text-align: left; font-weight: 600; }
+    td { padding: 9px 14px; border-bottom: 1px solid #e8ecf0; color: #444; }
+    tr:nth-child(even) td { background: #f4f8fc; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11.5px; font-weight: 600; }
+    .badge-point   { background: #d4eaff; color: #1a5fa3; }
+    .badge-line    { background: #d4f5e2; color: #1a7a45; }
+    .badge-polygon { background: #ffecd0; color: #b05a00; }
+
+    .map-btn-wrapper { display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 16px; background: #eaf0f8; }
+    .map-btn { display: inline-block; background: #2e6da4; color: white; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 700; text-decoration: none; letter-spacing: 0.5px; transition: background 0.2s; }
+    .map-btn:hover { background: #1a3a5c; }
+    .map-btn-desc { color: #5a7a99; font-size: 14px; }
+
+    footer { background: #1a3a5c; color: #a8c0d6; text-align: center; padding: 22px 16px; font-size: 13px; }
+    footer strong { color: white; }
+
+    @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } header h1 { font-size: 20px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="univ">İzmir Katip Çelebi Üniversitesi — Web CBS Doktora Dersi Dönemi Ödevi</div>
+  <h1>Karaburun İlçesi Numarataj Verilerinin CBS Ortamında Analizi</h1>
+  <h2>Eğlenhoca ve İnecik Mahalleleri — Kapı Numarası, Yol ve Yapı Katmanları Web Harita Projesi</h2>
+</header>
+
+<div class="container">
+
+  <div class="about">
+    <h3>Proje Hakkında</h3>
+    <p>Bu çalışma, İzmir Büyükşehir Belediyesi koordinasyonunda yürütülen adres ve numarataj güncelleme projesinin CBS (Coğrafi Bilgi Sistemi) ayağı kapsamında üretilen saha verilerinin web ortamında görselleştirilmesini konu almaktadır. Numarataj projesi; her yapıya sokak bağlantısına göre benzersiz bir kapı numarası atanmasını, yapıların coğrafi konumlarının YapıCBS sistemine işlenmesini ve sokak-yapı ilişkisinin CBS katmanları üzerinde tutarlı biçimde kurulmasını kapsamaktadır.</p>
+    <p>İzmir iline ait bu numarataj çalışmasının CBS ayağı, Karaburun ilçesi dahil birden fazla ilçeyi kapsayan aktif bir süreç olarak devam etmektedir. Karaburun ilçesine bağlı Eğlenhoca ve İnecik mahalleleri, numarataj güncelleme çalışmalarının yürütüldüğü aktif sahalardan biri olması nedeniyle bu proje için veri kaynağı olarak seçilmiştir.</p>
+    <p>Çalışmada dört katman kullanılmıştır: mahalle sınırları (alan), yol orta hatları (çizgi), yapı ayak izleri (alan) ve numarataj noktaları (nokta). Numarataj noktaları katmanı; saha ekiplerinin GPS destekli cihazlarla kaydettiği kapı konumlarını ve her noktaya ait sokak kodu, kapı numarası ile mahalle bilgilerini içermektedir. Yol orta hatları ise hangi kapı numarasının hangi sokağa bağlı olduğunu tanımlayan referans geometrisi işlevi görmektedir.</p>
+    <p>Tüm katmanlar EPSG:4326 koordinat sistemine dönüştürülmüş; tampon analizi, alan hesaplama ve mekânsal sorgu olmak üzere üç temel CBS analizi gerçekleştirilmiştir. Üretilen harita QGIS2Web eklentisi ile Leaflet tabanlı web haritasına dönüştürülerek GitHub Pages üzerinden yayınlanmıştır.</p>
+  </div>
+
+  <div class="cards-title">Gerçekleştirilen Analizler</div>
+  <div class="cards">
+    <div class="card">
+      <div class="icon">🛣️</div>
+      <h4>Buffer Analizi</h4>
+      <p>Yol orta hatları katmanı etrafında 100 m tampon alanı üretildi. Bu alanlar, sokağa bağlanacak potansiyel kapı numarası noktalarının belirlenmesinde referans olarak kullanılabilir.</p>
+    </div>
+    <div class="card">
+      <div class="icon">📐</div>
+      <h4>Alan Hesaplama</h4>
+      <p>Yapı ayak izleri katmanındaki her objeye m² cinsinden yüzölçümü hesaplanarak <em>alan_m2</em> özniteliği eklendi. Büyük yapılar çok bağımsız bölüm içerebileceğinden numarataj açısından önem taşır.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🔍</div>
+      <h4>Mekânsal Sorgu</h4>
+      <p>Alanı 500 m²'yi aşan yapılar sorgulanarak ayrı katman olarak kaydedildi. Bu yapılar birden fazla kapı numarası atanması gereken potansiyel noktalar olarak değerlendirilebilir.</p>
+    </div>
+  </div>
+
+  <div class="map-section">
+    <h3>🗺️ Etkileşimli Web Haritası</h3>
+    <div class="map-wrapper">
+      <div class="map-btn-wrapper">
+        <span style="font-size:48px;">🗺️</span>
+        <p class="map-btn-desc">Karaburun Numarataj CBS — Etkileşimli Leaflet Haritası</p>
+        <a class="map-btn" href="harita.html" target="_blank">🗺️ Haritayı Aç</a>
+        <p class="map-btn-desc" style="font-size:12px;">Yeni sekmede açılır</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="data-section">
+    <h3>📂 Kullanılan Veri Setleri</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Katman Adı</th>
+          <th>Geometri Türü</th>
+          <th>Koordinat Sistemi</th>
+          <th>İçerik</th>
+          <th>Format</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>numarataj_epgs</td>
+          <td><span class="badge badge-point">Nokta</span></td>
+          <td>EPSG:4326</td>
+          <td>Kapı numarası noktaları</td>
+          <td>Shapefile</td>
+        </tr>
+        <tr>
+          <td>yolortahattı_epgs</td>
+          <td><span class="badge badge-line">Çizgi</span></td>
+          <td>EPSG:4326</td>
+          <td>Yol orta hatları</td>
+          <td>Shapefile</td>
+        </tr>
+        <tr>
+          <td>yapı_epgs</td>
+          <td><span class="badge badge-polygon">Alan</span></td>
+          <td>EPSG:4326</td>
+          <td>Yapı ayak izleri</td>
+          <td>Shapefile</td>
+        </tr>
+        <tr>
+          <td>mahalle_epgs</td>
+          <td><span class="badge badge-polygon">Alan</span></td>
+          <td>EPSG:4326</td>
+          <td>Mahalle sınırları</td>
+          <td>Shapefile</td>
+        </tr>
+        <tr>
+          <td>yollar_buffer_100m</td>
+          <td><span class="badge badge-polygon">Alan</span></td>
+          <td>EPSG:4326</td>
+          <td>Buffer analiz çıktısı</td>
+          <td>Shapefile</td>
+        </tr>
+        <tr>
+          <td>buyuk_yapilar_500m2</td>
+          <td><span class="badge badge-polygon">Alan</span></td>
+          <td>EPSG:4326</td>
+          <td>Sorgu analiz çıktısı</td>
+          <td>Shapefile</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>
+  <strong>İzmir Katip Çelebi Üniversitesi</strong> — Web CBS Doktora Dersi Dönemi Ödevi &nbsp;|&nbsp;
+  Karaburun / Eğlenhoca–İnecik Numarataj CBS Projesi &nbsp;|&nbsp; QGIS · Leaflet · GitHub Pages
+</footer>
+
+</body>
+</html>
